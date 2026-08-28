@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "dev.aero.core.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ScreenTrackingMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

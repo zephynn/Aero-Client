@@ -1,0 +1,10 @@
+{
+  "id": "example-module",
+  "name": "Example Module",
+  "version": "2.0.0",
+  "entrypoint": "dev.aero.official.example.ExampleModuleV2",
+  "apiVersion": "1.0",
+  "description": "Version 2 of the example module - drop this in and run `/aero update example-module example-module-2.0.0.jar` to prove a module can be hot-swapped without restarting Minecraft.",
+  "author": "Aero",
+  "minecraftVersion": "1.21.11"
+}

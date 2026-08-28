@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "aero",
+  "version": "${version}",
+  "name": "Aero",
+  "description": "Phase 1 proof of concept: a hot-loadable Community Module runtime built on Fabric. Aero is the only Fabric mod Fabric Loader loads - everything else is a Community Module Aero loads, enables, disables, updates, and unloads dynamically at runtime.",
+  "authors": ["Aero"],
+  "license": "ARR",
+  "environment": "client",
+  "entrypoints": {
+    "main": ["dev.aero.core.AeroMod"],
+    "client": ["dev.aero.core.client.AeroClientMod"]
+  },
+  "mixins": [
+    {
+      "config": "aero.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

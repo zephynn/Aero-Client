@@ -1,0 +1,10 @@
+{
+  "id": "example-module",
+  "name": "Example Module",
+  "version": "1.0.0",
+  "entrypoint": "dev.aero.official.example.ExampleModule",
+  "apiVersion": "1.0",
+  "description": "First-party module used to exercise the Aero Module Runtime: HUD text, a keybind, and a tick counter.",
+  "author": "Aero",
+  "minecraftVersion": "1.21.11"
+}
