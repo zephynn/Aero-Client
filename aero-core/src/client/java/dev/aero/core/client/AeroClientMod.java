@@ -90,6 +90,12 @@ public class AeroClientMod implements ClientModInitializer {
             for (JarModulePackage pkg : ModuleDiscovery.scan(modulesDir)) {
                 try {
                     ModuleManifest manifest = pkg.manifest();
+                    if (runtime.modules().getModule(manifest.id()).isPresent()) {
+                        // Already installed (from a previous scan, or this is a
+                        // second/updated jar for the same id sitting in the
+                        // folder) - use `/aero update` to replace it in place.
+                        continue;
+                    }
                     runtime.modules().install(pkg);
                     runtime.modules().enable(manifest.id());
                     Aero.LOGGER.info("Loaded and enabled module '{}' v{}", manifest.id(), manifest.version());
