@@ -152,7 +152,12 @@ public final class AeroConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        // This screen is opened from Mod Menu's mods list, which is already
+        // blurred - the full renderBackground() would blur a second time in
+        // the same frame and Minecraft throws for that. renderTransparentBackground
+        // is the same "flat dim, no blur" call vanilla sub-screens use (e.g.
+        // Options sub-screens opened over the main Options screen).
+        renderTransparentBackground(graphics);
         graphics.drawCenteredString(font, "Aero - Community Modules", width / 2, 12, 0xFFFFFFFF);
 
         if (runtime != null) {
