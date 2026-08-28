@@ -184,13 +184,33 @@ public final class ModuleManagerImpl implements ModuleManager {
         ModuleHandleImpl old = requireHandle(moduleId);
         boolean wasEnabled = old.state() == ModuleState.ENABLED;
 
+        // Validate the replacement *before* touching the running module at all -
+        // a bad path, unreadable jar, or malformed manifest must leave the
+        // currently-running version completely untouched.
+        ModuleManifest newManifest = pkg.manifest();
+        if (!newManifest.id().equals(moduleId)) {
+            throw new ModuleException("Cannot update '" + moduleId + "': replacement manifest declares id '"
+                    + newManifest.id() + "'");
+        }
+
+        // Temporarily vacate the id so install() doesn't reject it as a
+        // duplicate, but keep `old` fully intact - if install() below fails,
+        // put it right back with nothing lost (it was never disabled or
+        // disposed).
+        modules.remove(moduleId);
+        try {
+            install(pkg);
+        } catch (ModuleException e) {
+            modules.put(moduleId, old);
+            throw new ModuleException(
+                    "Update failed, kept running the previous version of '" + moduleId + "': " + e.getMessage(), e);
+        }
+
+        // The new version is confirmed installed - only now is it safe to retire the old one.
         if (wasEnabled) {
             disableHandle(old, ModuleState.DISABLED);
         }
         disposeHandle(old);
-        modules.remove(moduleId);
-
-        install(pkg);
 
         if (wasEnabled) {
             enable(moduleId);

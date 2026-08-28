@@ -16,6 +16,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The client half of Aero: this is where the Aero Module Runtime (which
@@ -26,6 +27,9 @@ import java.nio.file.Path;
 public class AeroClientMod implements ClientModInitializer {
 
     private static final String MODULES_SUBDIR = "aero/modules";
+
+    /** How often (in client ticks) the modules directory is rescanned for newly-dropped jars. 20 ticks/second, so 100 = ~5 seconds. */
+    private static final long AUTO_SCAN_INTERVAL_TICKS = 100;
 
     @Override
     public void onInitializeClient() {
@@ -40,9 +44,19 @@ public class AeroClientMod implements ClientModInitializer {
 
         loadModulesFrom(runtime, modulesDir);
 
+        AtomicLong ticksSinceLastScan = new AtomicLong();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             runtime.tick();
             keybindBridge.poll();
+
+            // Auto-detect new module jars dropped into the modules directory
+            // while Minecraft is running - no restart, no command needed.
+            // loadModulesFrom() already skips ids that are already installed,
+            // so this is safe to call repeatedly.
+            if (ticksSinceLastScan.incrementAndGet() >= AUTO_SCAN_INTERVAL_TICKS) {
+                ticksSinceLastScan.set(0);
+                loadModulesFrom(runtime, modulesDir);
+            }
         });
 
         HudRenderCallback.EVENT.register((guiGraphics, deltaTracker) -> {
@@ -64,11 +78,12 @@ public class AeroClientMod implements ClientModInitializer {
     }
 
     /**
-     * Startup discovery: every {@code .jar} already sitting in the modules
-     * directory is installed and enabled immediately. A module dropped in
-     * (or removed/updated) while Minecraft keeps running is handled through
-     * {@code /aero reload|enable|disable|update|uninstall} - see
-     * {@link AeroCommands}.
+     * Installs and enables every {@code .jar} in the modules directory whose
+     * manifest id isn't already installed - safe to call repeatedly (at
+     * startup, and every {@link #AUTO_SCAN_INTERVAL_TICKS} ticks thereafter),
+     * since already-installed modules are skipped. Removing, disabling, or
+     * updating a module in place while running still goes through
+     * {@code /aero disable|enable|update|uninstall} - see {@link AeroCommands}.
      */
     private static void loadModulesFrom(ModuleRuntime runtime, Path modulesDir) {
         try {

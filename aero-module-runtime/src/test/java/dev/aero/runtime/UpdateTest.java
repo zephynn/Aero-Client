@@ -1,6 +1,7 @@
 package dev.aero.runtime;
 
 import dev.aero.api.ModuleState;
+import dev.aero.api.exception.ModuleException;
 import dev.aero.runtime.classloader.ModuleClassLoader;
 import dev.aero.runtime.pkg.JarModulePackage;
 import dev.aero.runtime.testkit.CapturingLog;
@@ -15,6 +16,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -84,5 +86,83 @@ class UpdateTest {
         manager.update("idle-module", new JarModulePackage(jarV2));
 
         assertEquals(ModuleState.LOADED, manager.getModule("idle-module").orElseThrow().state());
+    }
+
+    @Test
+    void aFailedUpdateLeavesTheRunningModuleUntouched(@TempDir Path tmp) throws Exception {
+        CapturingLog log = new CapturingLog();
+        ModuleManagerImpl manager = new ModuleManagerImpl(getClass().getClassLoader(), log, GameStateProvider.NONE);
+
+        File jarV1 = TestModuleBuilder.compileModuleJar(
+                tmp, "SurviveModule", Fixtures.wellBehaved("SurviveModule", "v1"),
+                Fixtures.manifest("survive-module", "SurviveModule", "1.0.0"));
+        manager.install(new JarModulePackage(jarV1));
+        manager.enable("survive-module");
+
+        // A file that does not exist - e.g. a typo'd filename, exactly what was
+        // reported from real in-game testing ("update comes back with an error
+        // and the original module disappears").
+        File missingFile = tmp.resolve("does-not-exist.jar").toFile();
+
+        // The replacement is validated (and rejected) before the running module
+        // is touched at all, so this fails as an outright ManifestException -
+        // no "rollback" was even needed because nothing was changed yet.
+        assertThrows(ModuleException.class, () -> manager.update("survive-module", new JarModulePackage(missingFile)));
+
+        assertEquals(ModuleState.ENABLED, manager.getModule("survive-module").orElseThrow().state(),
+                "the original module must still be installed and enabled after a failed update");
+        assertEquals("1.0.0", manager.getModule("survive-module").orElseThrow().manifest().version());
+
+        manager.tick(99);
+        assertEquals(1, log.countContaining("tick:v1"), "the original module must still be receiving ticks");
+    }
+
+    @Test
+    void aReplacementWithAValidManifestButBadEntrypointAlsoLeavesTheRunningModuleUntouched(@TempDir Path tmp) throws Exception {
+        CapturingLog log = new CapturingLog();
+        ModuleManagerImpl manager = new ModuleManagerImpl(getClass().getClassLoader(), log, GameStateProvider.NONE);
+
+        File jarV1 = TestModuleBuilder.compileModuleJar(
+                tmp, "SurviveModule2", Fixtures.wellBehaved("SurviveModule2", "v1"),
+                Fixtures.manifest("survive-module-2", "SurviveModule2", "1.0.0"));
+        manager.install(new JarModulePackage(jarV1));
+        manager.enable("survive-module-2");
+
+        // Manifest is well-formed (so the early validation in update() passes),
+        // but the entrypoint class doesn't implement Module - this is the branch
+        // that exercises the actual "vacate id, try install, put it back on
+        // failure" rollback, not just the early manifest check.
+        File badEntrypointJar = TestModuleBuilder.compileModuleJar(
+                tmp, "NotAModule2", Fixtures.notAModule("NotAModule2"),
+                Fixtures.manifest("survive-module-2", "NotAModule2", "2.0.0"));
+
+        ModuleException e = assertThrows(ModuleException.class,
+                () -> manager.update("survive-module-2", new JarModulePackage(badEntrypointJar)));
+        assertTrue(e.getMessage().contains("kept running the previous version"));
+
+        assertEquals(ModuleState.ENABLED, manager.getModule("survive-module-2").orElseThrow().state());
+        assertEquals("1.0.0", manager.getModule("survive-module-2").orElseThrow().manifest().version());
+
+        manager.tick(1);
+        assertEquals(1, log.countContaining("tick:v1"));
+    }
+
+    @Test
+    void updateRejectsAReplacementManifestWithADifferentId(@TempDir Path tmp) throws Exception {
+        CapturingLog log = new CapturingLog();
+        ModuleManagerImpl manager = new ModuleManagerImpl(getClass().getClassLoader(), log, GameStateProvider.NONE);
+
+        File jarV1 = TestModuleBuilder.compileModuleJar(
+                tmp, "MismatchModule", Fixtures.wellBehaved("MismatchModule", "v1"),
+                Fixtures.manifest("mismatch-module", "MismatchModule", "1.0.0"));
+        manager.install(new JarModulePackage(jarV1));
+        manager.enable("mismatch-module");
+
+        File wrongIdJar = TestModuleBuilder.compileModuleJar(
+                tmp, "OtherModule", Fixtures.wellBehaved("OtherModule", "v2"),
+                Fixtures.manifest("a-totally-different-id", "OtherModule", "2.0.0"));
+
+        assertThrows(ModuleException.class, () -> manager.update("mismatch-module", new JarModulePackage(wrongIdJar)));
+        assertEquals(ModuleState.ENABLED, manager.getModule("mismatch-module").orElseThrow().state());
     }
 }
