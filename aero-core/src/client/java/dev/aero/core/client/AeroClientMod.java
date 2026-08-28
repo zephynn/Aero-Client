@@ -35,6 +35,7 @@ public class AeroClientMod implements ClientModInitializer {
     public void onInitializeClient() {
         Path modulesDir = FabricLoader.getInstance().getGameDir().resolve(MODULES_SUBDIR);
         ensureModulesDirExists(modulesDir);
+        Aero.modulesDir = modulesDir;
 
         ModuleRuntime runtime = new ModuleRuntime(
                 AeroClientMod.class.getClassLoader(), new Slf4jRuntimeLog(), new GameStateProviderImpl());
@@ -66,14 +67,14 @@ public class AeroClientMod implements ClientModInitializer {
 
         AeroCommands.register(runtime, modulesDir);
 
-        Aero.LOGGER.info("Aero client runtime ready - modules directory: {}", modulesDir);
+        Aero.info("Aero client runtime ready - modules directory: {}", modulesDir);
     }
 
     private static void ensureModulesDirExists(Path modulesDir) {
         try {
             Files.createDirectories(modulesDir);
         } catch (IOException e) {
-            Aero.LOGGER.error("Could not create Aero modules directory at " + modulesDir, e);
+            Aero.error("Could not create Aero modules directory at " + modulesDir, e);
         }
     }
 
@@ -98,14 +99,14 @@ public class AeroClientMod implements ClientModInitializer {
                     }
                     runtime.modules().install(pkg);
                     runtime.modules().enable(manifest.id());
-                    Aero.LOGGER.info("Loaded and enabled module '{}' v{}", manifest.id(), manifest.version());
+                    Aero.info("Loaded and enabled module '{}' v{}", manifest.id(), manifest.version());
                 } catch (ModuleException e) {
                     // One broken module must never stop the others from loading.
-                    Aero.LOGGER.error("Failed to load module from " + pkg.jarFile().getName(), e);
+                    Aero.error("Failed to load module from " + pkg.jarFile().getName(), e);
                 }
             }
         } catch (IOException e) {
-            Aero.LOGGER.error("Could not scan Aero modules directory at " + modulesDir, e);
+            Aero.error("Could not scan Aero modules directory at " + modulesDir, e);
         }
     }
 }

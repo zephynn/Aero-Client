@@ -8,9 +8,11 @@ version = rootProject.findProperty("aero_version") as String
 val minecraftVersion = rootProject.findProperty("minecraft_version") as String
 val loaderVersion = rootProject.findProperty("loader_version") as String
 val fabricApiVersion = rootProject.findProperty("fabric_api_version") as String
+val modmenuVersion = rootProject.findProperty("modmenu_version") as String
 
 repositories {
     maven("https://maven.fabricmc.net/") { name = "Fabric" }
+    maven("https://maven.terraformersmc.com/releases/") { name = "TerraformersMC" }
 }
 
 loom {
@@ -32,6 +34,11 @@ dependencies {
     // Fabric API supplies the three hooks aero-core bridges into the Aero
     // Module Runtime: client tick, HUD rendering, and keybinding.
     modImplementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
+
+    // Mod Menu integration is optional at runtime (Aero works fine without
+    // it installed - /aero list|enable|disable still work) - modCompileOnly
+    // means it's on the compile classpath but never required or bundled.
+    modCompileOnly("com.terraformersmc:modmenu:$modmenuVersion")
 
     // The pure-Java engine. Neither of these touches Minecraft, so they need
     // no remapping - their compiled classes are merged straight into

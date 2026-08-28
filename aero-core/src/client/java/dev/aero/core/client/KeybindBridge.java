@@ -61,7 +61,7 @@ public final class KeybindBridge {
             public void onRegistered(KeybindRegistryImpl.Entry entry) {
                 Integer slot = freeSlots.pollFirst();
                 if (slot == null) {
-                    Aero.LOGGER.warn("No free Aero keybind slot for '{}' (all {} are in use) - "
+                    Aero.warn("No free Aero keybind slot for '{}' (all {} are in use) - "
                             + "its keybind will not respond to input", entry.qualifiedId(), SLOT_COUNT);
                     return;
                 }

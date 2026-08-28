@@ -20,10 +20,10 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.arg
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
 /**
- * A minimal {@code /aero} debug command, not a Community Modules UI (that is
- * explicitly out of scope for Phase 1 - see the root README). It exists
- * purely so the dynamic install/enable/disable/update/uninstall pipeline can
- * be exercised and demonstrated live, in-game, without building any screen.
+ * The {@code /aero} debug command. {@code /aero gui} opens
+ * {@link AeroConfigScreen} directly - the same screen Mod Menu opens - so it
+ * is reachable even without Mod Menu installed; the rest exercise the
+ * lifecycle from chat for scripting/testing.
  */
 public final class AeroCommands {
 
@@ -33,6 +33,7 @@ public final class AeroCommands {
     public static void register(ModuleRuntime runtime, Path modulesDir) {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
                 literal("aero")
+                        .then(literal("gui").executes(ctx -> openGui(ctx.getSource())))
                         .then(literal("list").executes(ctx -> list(ctx.getSource(), runtime)))
                         .then(literal("reload").executes(ctx -> reload(ctx.getSource(), runtime, modulesDir)))
                         .then(literal("enable").then(argument("id", StringArgumentType.word())
@@ -46,6 +47,11 @@ public final class AeroCommands {
                                         .executes(ctx -> update(ctx.getSource(), runtime, modulesDir,
                                                 StringArgumentType.getString(ctx, "id"),
                                                 StringArgumentType.getString(ctx, "file"))))))));
+    }
+
+    private static int openGui(FabricClientCommandSource source) {
+        source.getClient().setScreen(new AeroConfigScreen(source.getClient().screen));
+        return 1;
     }
 
     private static int list(FabricClientCommandSource source, ModuleRuntime runtime) {

@@ -12,6 +12,6 @@ public class AeroMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        Aero.LOGGER.info("Aero Phase 1 initializing");
+        Aero.info("Aero Phase 1 initializing");
     }
 }
